@@ -92,6 +92,11 @@ public class TurnManager : MonoBehaviourPunCallbacks
         public int winnerPlayerId;
 
         public double endTime;
+
+        // Added for synchronizing both players' scores
+        public int[] playerIds;
+
+        public int[] scores;
     }
 
 
@@ -744,9 +749,9 @@ public class TurnManager : MonoBehaviourPunCallbacks
     // =====================================================
 
     private IEnumerator RevealAndResolveCard(
-        int playerId,
-        int cardId,
-        int orderIndex)
+     int playerId,
+     int cardId,
+     int orderIndex)
     {
         CardData cardData =
             handManager.GetCardDataById(
@@ -757,7 +762,7 @@ public class TurnManager : MonoBehaviourPunCallbacks
         if (cardData == null)
         {
             Debug.LogError(
-                "Could not find card: " +
+                "Card not found: " +
                 cardId
             );
 
@@ -765,7 +770,10 @@ public class TurnManager : MonoBehaviourPunCallbacks
         }
 
 
-        // Tell clients which card is revealed.
+        // ---------------------------------------
+        // REVEAL CARD
+        // ---------------------------------------
+
         NetworkMessage revealMessage =
             new NetworkMessage
             {
@@ -779,14 +787,13 @@ public class TurnManager : MonoBehaviourPunCallbacks
                     cardId,
 
                 orderIndex =
-                    orderIndex,
-
-                power =
-                    cardData.power
+                    orderIndex
             };
 
 
-        SendToAll(revealMessage);
+        SendToAll(
+            revealMessage
+        );
 
 
         yield return new WaitForSeconds(
@@ -794,9 +801,64 @@ public class TurnManager : MonoBehaviourPunCallbacks
         );
 
 
-       
+        // ---------------------------------------
+        // RESOLVE ABILITY
+        // ---------------------------------------
+
+        AbilityResult result =
+            AbilityResolver.Resolve(
+                cardData
+            );
+
+
+        // Base/resolved card power.
         playerScores[playerId] +=
-            cardData.power;
+            result.power;
+
+
+        // GainPoints
+        playerScores[playerId] +=
+            result.bonusPoints;
+
+
+        // ---------------------------------------
+        // STEAL POINTS
+        // ---------------------------------------
+
+        if (result.stealPoints > 0)
+        {
+            int opponentId =
+                GetOpponentId(
+                    playerId
+                );
+
+
+            int actualSteal =
+                Mathf.Min(
+                    result.stealPoints,
+                    playerScores[
+                        opponentId
+                    ]
+                );
+
+
+            playerScores[
+                opponentId
+            ] -= actualSteal;
+
+
+            playerScores[
+                playerId
+            ] += actualSteal;
+        }
+
+
+        // ---------------------------------------
+        // SEND BOTH SCORES
+        // ---------------------------------------
+
+        Player[] players =
+            PhotonNetwork.PlayerList;
 
 
         NetworkMessage scoreMessage =
@@ -805,23 +867,36 @@ public class TurnManager : MonoBehaviourPunCallbacks
                 action =
                     "scoreUpdated",
 
-                playerId =
-                    playerId,
+                playerIds =
+                    new int[]
+                    {
+                    players[0].ActorNumber,
+                    players[1].ActorNumber
+                    },
 
-                score =
+                scores =
+                    new int[]
+                    {
                     playerScores[
-                        playerId
+                        players[0]
+                            .ActorNumber
                     ],
 
-                power =
-                    cardData.power
+                    playerScores[
+                        players[1]
+                            .ActorNumber
+                    ]
+                    }
             };
 
 
-        SendToAll(scoreMessage);
+        SendToAll(
+            scoreMessage
+        );
 
 
-        
+        // Score must finish updating
+        // before next reveal.
         yield return new WaitForSeconds(
             revealDelay
         );
@@ -946,40 +1021,69 @@ public class TurnManager : MonoBehaviourPunCallbacks
         }
     }
 
+    private int GetOpponentId(
+    int playerId)
+    {
+        foreach (
+            Player player
+            in PhotonNetwork.PlayerList)
+        {
+            if (player.ActorNumber !=
+                playerId)
+            {
+                return player.ActorNumber;
+            }
+        }
 
+        return -1;
+    }
     // =====================================================
     // SCORE UPDATED
     // =====================================================
 
     private void HandleScoreUpdated(
-        NetworkMessage message)
+     NetworkMessage message)
     {
-        bool isMe =
-            message.playerId ==
-            PhotonNetwork
-                .LocalPlayer
-                .ActorNumber;
-
-
-        if (isMe)
+        if (message.playerIds == null ||
+            message.scores == null)
         {
-            playerScoreText.text =
-                "Score: " +
-                message.score;
+            return;
         }
-        else
+
+
+        for (int i = 0;
+             i < message.playerIds.Length;
+             i++)
         {
-            opponentScoreText.text =
-                "Score: " +
-                message.score;
+            int actorId =
+                message.playerIds[i];
+
+            int score =
+                message.scores[i];
+
+
+            
+            playerScores[actorId] =
+                score;
+
+
+            if (actorId ==
+                PhotonNetwork
+                    .LocalPlayer
+                    .ActorNumber)
+            {
+                playerScoreText.text =
+                    "Score: " +
+                    score;
+            }
+            else
+            {
+                opponentScoreText.text =
+                    "Score: " +
+                    score;
+            }
         }
     }
-
-
-    // =====================================================
-    // TURN END
-    // =====================================================
-
     private void HandleTurnEnd(
         NetworkMessage message)
     {

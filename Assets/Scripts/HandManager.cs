@@ -16,6 +16,8 @@ public class HandManager : MonoBehaviour
     [SerializeField] private TMP_Text availableCostText;
     [SerializeField] private TMP_Text statusText;
 
+    [Header("Card Database")]
+    [SerializeField] private TextAsset cardsJson;
 
     private readonly List<CardData> deck = new();
     private readonly List<CardData> hand = new();
@@ -55,102 +57,39 @@ public class HandManager : MonoBehaviour
         deck.Clear();
         cardDefinitions.Clear();
 
-        deck.Add(new CardData
+        if (cardsJson == null)
         {
-            id = 1,
-            cardName = "Warrior",
-            cost = 1,
-            power = 2
-        });
+            Debug.LogError("Cards JSON is not assigned.");
+            return;
+        }
 
-        deck.Add(new CardData
-        {
-            id = 2,
-            cardName = "Archer",
-            cost = 1,
-            power = 1
-        });
+        CardDatabase database =
+            JsonUtility.FromJson<CardDatabase>(
+                cardsJson.text
+            );
 
-        deck.Add(new CardData
+        if (database == null ||
+            database.cards == null ||
+            database.cards.Length == 0)
         {
-            id = 3,
-            cardName = "Knight",
-            cost = 2,
-            power = 3
-        });
+            Debug.LogError(
+                "Cards JSON could not be loaded."
+            );
 
-        deck.Add(new CardData
-        {
-            id = 4,
-            cardName = "Shield Bearer",
-            cost = 2,
-            power = 2
-        });
+            return;
+        }
 
-        deck.Add(new CardData
-        {
-            id = 5,
-            cardName = "Mage",
-            cost = 3,
-            power = 4
-        });
+        deck.AddRange(database.cards);
 
-        deck.Add(new CardData
-        {
-            id = 6,
-            cardName = "Rogue",
-            cost = 2,
-            power = 3
-        });
+        cardDefinitions.AddRange(
+            database.cards
+        );
 
-        deck.Add(new CardData
-        {
-            id = 7,
-            cardName = "Guardian",
-            cost = 3,
-            power = 5
-        });
-
-        deck.Add(new CardData
-        {
-            id = 8,
-            cardName = "Assassin",
-            cost = 4,
-            power = 6
-        });
-
-        deck.Add(new CardData
-        {
-            id = 9,
-            cardName = "Paladin",
-            cost = 4,
-            power = 5
-        });
-
-        deck.Add(new CardData
-        {
-            id = 10,
-            cardName = "Wizard",
-            cost = 5,
-            power = 7
-        });
-
-        deck.Add(new CardData
-        {
-            id = 11,
-            cardName = "Dragon",
-            cost = 6,
-            power = 9
-        });
-
-        deck.Add(new CardData
-        {
-            id = 12,
-            cardName = "Champion",
-            cost = 5,
-            power = 8
-        });
-        cardDefinitions.AddRange(deck);
+        Debug.Log(
+            "Loaded " +
+            deck.Count +
+            " cards from JSON."
+        );
     }
 
 
@@ -510,11 +449,32 @@ public class HandManager : MonoBehaviour
 
 
 
+
+
 [Serializable]
 public class CardData
 {
     public int id;
-    public string cardName;
+    public string name;
     public int cost;
     public int power;
+    public AbilityData ability;
+
+    // Keeps your existing CardUI code working.
+    public string cardName => name;
+}
+
+
+[Serializable]
+public class AbilityData
+{
+    public string type;
+    public int value;
+}
+
+
+[Serializable]
+public class CardDatabase
+{
+    public CardData[] cards;
 }

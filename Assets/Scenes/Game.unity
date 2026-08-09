@@ -230,6 +230,7 @@ MonoBehaviour:
   cardPrefab: {fileID: 6110011449835438562, guid: 04b2011326eff45439b1352738a9bf88, type: 3}
   availableCostText: {fileID: 758220777}
   statusText: {fileID: 1265367724}
+  cardsJson: {fileID: 4900000, guid: 1cb7cb7cc02676c4baaf33134cc7c47d, type: 3}
 --- !u!114 &97090125
 MonoBehaviour:
   m_ObjectHideFlags: 0
