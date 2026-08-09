@@ -6,7 +6,7 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
-        // Allows the Master Client to load the Game scene for both players.
+      
         PhotonNetwork.AutomaticallySyncScene = true;
 
         PhotonNetwork.ConnectUsingSettings();

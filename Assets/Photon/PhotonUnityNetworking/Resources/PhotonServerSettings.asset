@@ -39,6 +39,11 @@ MonoBehaviour:
   - DestroySpaceship
   - Fire
   - RespawnSpaceship
+  - BeginTurn
+  - FinishRound
+  - GameFinished
+  - ReceiveTurnSubmission
+  - ReceiveNetworkMessage
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 0
